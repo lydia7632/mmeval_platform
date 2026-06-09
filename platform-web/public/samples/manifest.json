@@ -1,0 +1,37 @@
+{
+  "flight": {
+    "image": "samples/flight.png",
+    "mask": "samples/masks/flight.png",
+    "width": 541,
+    "height": 495,
+    "focus": 0.86,
+    "objects": [
+      "airplane"
+    ]
+  },
+  "women": {
+    "image": "samples/women.png",
+    "mask": "samples/masks/women.png",
+    "width": 363,
+    "height": 275,
+    "focus": 0.91,
+    "objects": [
+      "hair",
+      "face",
+      "body",
+      "hand"
+    ]
+  },
+  "sea": {
+    "image": "samples/sea.jpg",
+    "mask": "samples/masks/sea.json",
+    "width": 1920,
+    "height": 1080,
+    "focus": 0.88,
+    "objects": [
+      "woman",
+      "man",
+      "wooden_boat"
+    ]
+  }
+}
