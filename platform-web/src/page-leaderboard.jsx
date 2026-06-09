@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Button, Segmented, Select, Space, Table, Tag } from 'antd';
+import { Line } from '@ant-design/charts';
 
-import { SiteFooter, SiteHeader } from './components.jsx';
+import { SiteFooter, SiteHeader, useColorMode } from './components.jsx';
 
 // ============================================================
 // Mock data — replace with real backend response when ready.
@@ -600,6 +601,9 @@ const MODELS = [
   },
 ];
 
+const CHART_METRICS = ['BLEU-4', 'METEOR', 'ROUGE-L', 'CIDEr', 'SPICE', 'CLIPScore', 'Fidelity', 'Adequacy', 'Fluency'];
+const DEFAULT_CHART_METRICS = ['CIDEr', 'CLIPScore', 'BLEU-4'];
+
 // ============================================================
 // UI
 // ============================================================
@@ -625,8 +629,8 @@ const sectionCardClass = {
 };
 
 const DIMENSIONS = [
-  { value: 'metric', label: 'Metric Comparison' },
   { value: 'model', label: 'Model Comparison' },
+  { value: 'metric', label: 'Metric Comparison' },
 ];
 
 const GRANULARITY_OPTIONS = [
@@ -645,11 +649,15 @@ const LLM_OPTIONS = [
 ];
 
 const EvaluationPage = () => {
-  const [dimension, setDimension] = useState('metric');
+  const { isDark } = useColorMode();
+  const [dimension, setDimension] = useState('model');
   const [granularityFilter, setGranularityFilter] = useState(undefined);
   const [imageFilter, setImageFilter] = useState(undefined); // 'yes' | 'no' | undefined
   const [llmFilter, setLlmFilter] = useState(undefined); // 'yes' | 'no' | undefined
   const [refFilter, setRefFilter] = useState(undefined); // 'yes' | 'no' | undefined
+  const [chartDataset, setChartDataset] = useState('COCO');
+  const [chartMetrics, setChartMetrics] = useState(DEFAULT_CHART_METRICS);
+  const [chartMethods, setChartMethods] = useState(() => MODELS.map(m => m.id));
 
   // Flatten: one row per (method, dataset) combination it has scores for.
   const flatModels = useMemo(() => {
@@ -712,6 +720,44 @@ const EvaluationPage = () => {
       };
     });
   }, []);
+
+  const chartData = useMemo(() => {
+    const allModelsForDataset = MODELS
+      .filter(m => m.scores[chartDataset])
+      .map(m => ({ ...m, s: m.scores[chartDataset] }));
+
+    if (!allModelsForDataset.length || !chartMetrics.length) return [];
+
+    const METRIC_RANGE = {
+      'BLEU-4': 100, METEOR: 100, 'ROUGE-L': 100, CIDEr: 200, SPICE: 100,
+      CLIPScore: 1, Fidelity: 1, Adequacy: 1, Fluency: 1,
+    };
+    const rawByMetric = {};
+    for (const metric of chartMetrics) {
+      rawByMetric[metric] = { min: 0, max: METRIC_RANGE[metric] ?? 100 };
+    }
+
+    const methodSet = new Set(chartMethods);
+    const selectedModels = allModelsForDataset.filter(m => methodSet.has(m.id));
+
+    const rows = [];
+    for (const m of selectedModels) {
+      for (const metric of chartMetrics) {
+        const raw = m.s[metric];
+        if (raw == null) continue;
+        const { min, max } = rawByMetric[metric];
+        const normalized = min === max ? 0.5 : (raw - min) / (max - min);
+        rows.push({
+          year: m.year,
+          metric,
+          value: +normalized.toFixed(3),
+          raw,
+          method: m.method,
+        });
+      }
+    }
+    return rows.sort((a, b) => a.year - b.year);
+  }, [chartDataset, chartMetrics, chartMethods]);
 
   const filteredMetrics = useMemo(() => {
     return METRICS.filter(m => {
@@ -1072,6 +1118,149 @@ const EvaluationPage = () => {
                   header to filter by dataset (Reset = all datasets); click any other header to
                   sort. Numbers are illustrative placeholders.
                 </p>
+
+                {/* Year-Performance Line Chart */}
+                <div className='rounded-lg border border-amber-300 dark:border-amber-700 bg-white/70 dark:bg-neutral-900/40 p-4 mb-4'>
+                  <p className='text-sm font-semibold text-amber-700 dark:text-amber-400 mb-3'>
+                    Performance Trend by Year
+                  </p>
+                  <Space size='middle' wrap className='mb-4'>
+                    <div>
+                      <p className='mb-1 text-xs font-semibold tracking-wide text-amber-700 dark:text-amber-400'>
+                        DATASET
+                      </p>
+                      <Select
+                        value={chartDataset}
+                        onChange={setChartDataset}
+                        options={DATASETS.map(d => ({ label: d, value: d }))}
+                        style={{ minWidth: 140 }}
+                      />
+                    </div>
+                    <div>
+                      <p className='mb-1 text-xs font-semibold tracking-wide text-amber-700 dark:text-amber-400'>
+                        METRICS
+                      </p>
+                      <Select
+                        mode='multiple'
+                        allowClear
+                        value={chartMetrics}
+                        onChange={setChartMetrics}
+                        options={CHART_METRICS.map(m => ({ label: m, value: m }))}
+                        style={{ minWidth: 320 }}
+                        maxTagCount='responsive'
+                        placeholder='Select metrics to compare'
+                        dropdownRender={menu => {
+                          const allSelected = chartMetrics.length === CHART_METRICS.length;
+                          return (
+                            <>
+                              <div
+                                className='flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 text-sm'
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => setChartMetrics(allSelected ? [] : [...CHART_METRICS])}
+                              >
+                                <span className={`inline-flex items-center justify-center w-4 h-4 rounded border ${allSelected ? 'bg-[#1677ff] border-[#1677ff] text-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                                  {allSelected && <span style={{ fontSize: 10 }}>✓</span>}
+                                </span>
+                                Select All
+                              </div>
+                              {menu}
+                            </>
+                          );
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <p className='mb-1 text-xs font-semibold tracking-wide text-amber-700 dark:text-amber-400'>
+                        METHODS
+                      </p>
+                      <Select
+                        mode='multiple'
+                        allowClear
+                        value={chartMethods}
+                        onChange={setChartMethods}
+                        options={MODELS.map(m => ({ label: m.method, value: m.id }))}
+                        style={{ minWidth: 320 }}
+                        maxTagCount='responsive'
+                        placeholder='Select methods to compare'
+                        dropdownRender={menu => {
+                          const allSelected = chartMethods.length === MODELS.length;
+                          return (
+                            <>
+                              <div
+                                className='flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 text-sm'
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => setChartMethods(allSelected ? [] : MODELS.map(m => m.id))}
+                              >
+                                <span className={`inline-flex items-center justify-center w-4 h-4 rounded border ${allSelected ? 'bg-[#1677ff] border-[#1677ff] text-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                                  {allSelected && <span style={{ fontSize: 10 }}>✓</span>}
+                                </span>
+                                Select All
+                              </div>
+                              {menu}
+                            </>
+                          );
+                        }}
+                      />
+                    </div>
+                  </Space>
+
+                  {chartData.length > 0 ? (
+                    <Line
+                      height={400}
+                      data={chartData}
+                      xField='year'
+                      yField='value'
+                      colorField='metric'
+                      shapeField='smooth'
+                      tooltip={{
+                        title: '',
+                        items: [{ field: 'metric', name: 'Metric' }],
+                      }}
+                      point={{
+                        size: 4,
+                        shapeField: 'circle',
+                        tooltip: {
+                          title: '',
+                          items: [
+                            { field: 'method', name: 'Model' },
+                            { field: 'metric', name: 'Metric' },
+                            { field: 'raw', name: 'Score' },
+                          ],
+                        },
+                        labels: [{
+                          text: 'raw',
+                          fontSize: 10,
+                          dy: -12,
+                          fill: isDark ? '#ccc' : '#555',
+                        }],
+                      }}
+                      interaction={{
+                        tooltip: { shared: false, series: false },
+                        elementHighlight: { background: false },
+                      }}
+                      state={{
+                        active: { lineWidth: 3 },
+                      }}
+                      axis={{
+                        y: {
+                          title: 'Normalized Score (0–1)',
+                          labelFormatter: v => v.toFixed(1),
+                        },
+                        x: {
+                          title: 'Year',
+                          labelFormatter: v => String(v),
+                        },
+                      }}
+                      scale={{ x: { type: 'linear', tickCount: MODELS.length } }}
+                      legend={{ color: { position: 'top', layout: { justifyContent: 'center' } } }}
+                      theme={isDark ? 'classicDark' : 'classic'}
+                    />
+                  ) : (
+                    <div className='h-48 flex items-center justify-center text-neutral-400'>
+                      No data available for the selected dataset and metrics.
+                    </div>
+                  )}
+                </div>
 
                 <Table
                   className='dark:[&_.ant-table]:bg-neutral-900'

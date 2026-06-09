@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -181,6 +182,7 @@ const SAMPLES = {
 const MANIFEST_URL = '/samples/manifest.json';
 
 const GenerationPage = () => {
+  const navigate = useNavigate();
   const [manifest, setManifest] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [imageName, setImageName] = useState('');
@@ -556,6 +558,15 @@ const GenerationPage = () => {
             )}
           </Space>
         </div>
+      </div>
+      <div className='flex justify-center my-6'>
+        <Button
+          type='primary'
+          size='large'
+          onClick={() => navigate('/evaluation')}
+        >
+          Go to Leaderboard →
+        </Button>
       </div>
       <SiteFooter />
     </>

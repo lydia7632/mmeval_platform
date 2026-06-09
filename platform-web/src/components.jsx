@@ -18,7 +18,7 @@ export function useColorMode() {
 }
 
 /** Browser tab title and header text */
-export const SITE_TITLE = 'UniCapEval';
+export const SITE_TITLE = '视觉-常识组合推理评测平台';
 
 const headerBadgeClass =
   'shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide text-white';
