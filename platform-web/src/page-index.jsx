@@ -3,99 +3,7 @@ import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 
 import { SiteFooter, SiteHeader } from './components.jsx';
-
-const BENCHMARKS = [
-  {
-    group: '图像内容生成',
-    works: [
-      {
-        id: 'ic-1',
-        title: 'HiFi-Score',
-        image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Image+Caption+1',
-        projectUrl: 'https://github.com/lydia7632/HiFi-Score',
-        evalUrl: '/generation',
-        leaderboardUrl: '/evaluation',
-        stats: null,
-      },
-      {
-        id: 'ic-2',
-        title: 'UniCapEval',
-        image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Image+Caption+2',
-        projectUrl: null,
-        evalUrl: null,
-        leaderboardUrl: null,
-        stats: null,
-      },
-      {
-        id: 'ic-3',
-        title: 'ImgNarr-23K',
-        image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Image+Caption+3',
-        projectUrl: null,
-        evalUrl: null,
-        leaderboardUrl: null,
-        stats: null,
-      },
-    ],
-  },
-  {
-    group: '图文知识推理',
-    works: [
-      {
-        id: 'vqa-1',
-        title: 'M4U',
-        image: '/M4U.png',
-        projectUrl: null,
-        evalUrl: null,
-        leaderboardUrl: null,
-        stats: [
-          ['6 种语言', '8,931 个题目'],
-          ['64 个学科', '16 个子领域'],
-        ],
-      },
-      {
-        id: 'vqa-2',
-        title: 'CRIC',
-        image: '/CRIC.png',
-        projectUrl: null,
-        evalUrl: null,
-        leaderboardUrl: null,
-        statsMode: 'overlay',
-        stats: [
-          [{ num: '96K', label: '图像' }, { num: '494K', label: '问答对' }],
-          [{ num: '11', label: '类关系' }, { num: '3.4K', label: '知识项' }],
-        ],
-      },
-    ],
-  },
-  {
-    group: '具身环境理解',
-    works: [
-      {
-        id: 'agent-1',
-        title: 'Env-QA',
-        image: '/Env-QA.png',
-        projectUrl: null,
-        evalUrl: null,
-        leaderboardUrl: null,
-        statsMode: 'overlay',
-        stats: [
-          [{ num: '120', label: '种环境' }, { num: '23.3K', label: '视频' }],
-          [{ num: '5', label: '大类问题' }, { num: '85.1K', label: '问答对' }],
-        ],
-      },
-      {
-        id: 'agent-2',
-        title: 'Web Agent',
-        image: 'https://placehold.co/400x250/ede9fe/5b21b6?text=Agent+2',
-        projectUrl: null,
-        evalUrl: null,
-        leaderboardUrl: null,
-        statsMode: 'overlay',
-        stats: null,
-      },
-    ],
-  },
-];
+import BENCHMARKS from './benchmarks.js';
 
 const WorkCard = ({ work, navigate }) => {
   const [showStats, setShowStats] = useState(false);
@@ -105,9 +13,7 @@ const WorkCard = ({ work, navigate }) => {
   const Tag = work.projectUrl ? 'a' : 'span';
 
   const handleImageClick = () => {
-    if (work.stats) {
-      setShowStats(prev => !prev);
-    } else if (work.projectUrl) {
+    if (work.projectUrl) {
       window.open(work.projectUrl, '_blank');
     }
   };
@@ -139,7 +45,12 @@ const WorkCard = ({ work, navigate }) => {
     <div className='relative'>
       <div className='rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 shadow-sm overflow-hidden flex flex-col'>
         {isInline && titleBlock}
-        <div className='relative cursor-pointer' onClick={handleImageClick}>
+        <div
+          className='relative cursor-pointer'
+          onClick={handleImageClick}
+          onMouseEnter={() => work.stats && setShowStats(true)}
+          onMouseLeave={() => work.stats && setShowStats(false)}
+        >
           <img
             src={work.image}
             alt={work.title}
@@ -177,18 +88,47 @@ const WorkCard = ({ work, navigate }) => {
         </div>
       </div>
       {work.stats && work.statsMode !== 'overlay' && work.statsMode !== 'inline' && showStats && (
-        <>
-          <div className='fixed inset-0 z-40' onClick={() => setShowStats(false)} />
-          <div className='absolute left-full top-0 ml-3 z-50 rounded-xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-neutral-800 shadow-lg p-4 flex flex-col justify-center gap-3 w-48'>
-            {work.stats.flat().map((item, i) => (
-              <div key={i} className='text-center rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-700 py-3 px-2'>
-                <p className='text-sm font-bold text-blue-700 dark:text-blue-300'>{item}</p>
-              </div>
-            ))}
-          </div>
-        </>
+        <div className='absolute left-full top-0 ml-3 z-50 rounded-xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-neutral-800 shadow-lg p-4 flex flex-col justify-center gap-3 w-48'>
+          {work.stats.flat().map((item, i) => (
+            <div key={i} className='text-center rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-700 py-3 px-2'>
+              <p className='text-sm font-bold text-blue-700 dark:text-blue-300'>{item}</p>
+            </div>
+          ))}
+        </div>
       )}
     </div>
+  );
+};
+
+const VISIBLE_COUNT = 5;
+
+const BenchmarkGroup = ({ group, navigate }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = group.works.length > VISIBLE_COUNT;
+  const visibleWorks = expanded ? group.works : group.works.slice(0, VISIBLE_COUNT);
+
+  return (
+    <section>
+      <h2 className='text-3xl font-bold text-neutral-800 dark:text-neutral-100 mb-4 border-l-4 border-blue-500 pl-3'>
+        {group.group}
+        <span className='text-base font-normal text-neutral-400 dark:text-neutral-500 ml-3'>({group.works.length})</span>
+      </h2>
+      <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6'>
+        {visibleWorks.map(work => (
+          <WorkCard key={work.id} work={work} navigate={navigate} />
+        ))}
+      </div>
+      {hasMore && (
+        <div className='flex justify-center mt-4'>
+          <Button
+            type='link'
+            onClick={() => setExpanded(prev => !prev)}
+          >
+            {expanded ? '收起 ▲' : `更多工作 (${group.works.length - VISIBLE_COUNT}) ▼`}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 };
 
@@ -198,7 +138,7 @@ const IndexPage = () => {
   return (
     <>
       <SiteHeader />
-      <div className='w-full max-w-5xl mx-auto mt-8 sm:mt-10 mb-10 sm:mb-12 px-4'>
+      <div className='w-full mt-8 sm:mt-10 mb-10 sm:mb-12 px-2'>
         <p className='text-left text-base sm:text-lg leading-loose text-neutral-700 dark:text-neutral-300 mb-10 indent-[2em]'>
           欢迎来到<strong className='font-semibold text-neutral-900 dark:text-neutral-100'>视觉-常识组合推理评测平台</strong>
           ，本平台提供图像内容生成、多模态图文推理和具身环境理解三大方向的统一评测基准。
@@ -207,16 +147,7 @@ const IndexPage = () => {
 
         <div className='flex flex-col gap-10'>
           {BENCHMARKS.map(group => (
-            <section key={group.group}>
-              <h2 className='text-xl font-bold text-neutral-800 dark:text-neutral-100 mb-4 border-l-4 border-blue-500 pl-3'>
-                {group.group}
-              </h2>
-              <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
-                {group.works.map(work => (
-                  <WorkCard key={work.id} work={work} navigate={navigate} />
-                ))}
-              </div>
-            </section>
+            <BenchmarkGroup key={group.group} group={group} navigate={navigate} />
           ))}
         </div>
       </div>

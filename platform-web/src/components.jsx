@@ -30,9 +30,9 @@ export const SiteHeader = ({ badge }) => {
   return (
   <header className='flex items-center justify-between gap-3 px-4 py-2 w-full mb-4'>
     <div className='flex items-center gap-2 min-w-0 flex-1'>
-    <img src='/评价.png' alt='UniCapEval logo' className='w-16 h-16 shrink-0 object-contain' />
+    <img src='/评价.png' alt='UniCapEval logo' className='w-24 h-24 shrink-0 object-contain' />
     <div className='flex items-center gap-4 min-w-0 flex-1 ml-3'>
-      <p className='text-[2.4em] text-neutral-900 dark:text-neutral-100 truncate min-w-0'>
+      <p className='text-[3em] font-bold text-neutral-900 dark:text-neutral-100 truncate min-w-0'>
         {SITE_TITLE}
       </p>
       {badge === 'EVAL' && (
